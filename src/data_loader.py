@@ -1,7 +1,7 @@
 import pandas as pd
 from src import config
 
-def load_raw_data(filepath: str = config.DATA_PATH) -> pd.DataFrame:
+def load_raw_data(filepath: str = config.RAW_DATA_PATH) -> pd.DataFrame:
     """
     Loads the raw energy dataset and enforces the chronological index.
     """
