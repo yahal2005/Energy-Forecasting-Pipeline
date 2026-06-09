@@ -219,3 +219,6 @@ __marimo__/
 
 # dataset
 data/energy_data_set.csv
+
+#tuning logs
+models/tuner_logs/
