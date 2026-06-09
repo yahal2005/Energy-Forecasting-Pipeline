@@ -219,7 +219,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # dataset
-data/energy_data_set.csv
+data/
 
 #tuning logs
 models/tuner_logs/
