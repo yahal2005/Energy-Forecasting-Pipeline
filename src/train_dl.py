@@ -86,7 +86,7 @@ def train_evaluate_dl():
     print(f"Final Deep Learning Score      -> MAE: {mae:.4f} | RMSE: {rmse:.4f}")
     
     # Save the architecture
-    model.save(os.path.join(config.PROJECT_ROOT, "models", "cnn_lstm_model.h5"))
+    model.save(os.path.join(config.PROJECT_ROOT, "models", "cnn_lstm_model.keras"))
     print("Model architecture and weights saved to /models/")
 
 if __name__ == "__main__":
