@@ -1,70 +1,42 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from xgboost import XGBRegressor
+from sklearn.model_selection import RandomizedSearchCV
 import os
 import sys
+import joblib
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import config
 
-def load_splits():
-    print("Loading processed data...")
 
-    # Load the preprocessed datasets (already split and scaled)
-    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train.csv"), index_col=0)
-    val = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "val.csv"), index_col=0)
+def train_baselines():
+    print("Loading scaled data for baseline training")
+    train_data = pd.read_csv('data/processed/train_final.csv')
     
-    # Separate Features (X) and Target (y)
-    X_train = train.drop(columns=[config.TARGET])
-    y_train = train[config.TARGET]
-    
-    X_val = val.drop(columns=[config.TARGET])
-    y_val = val[config.TARGET]
-    
-    return X_train, y_train, X_val, y_val
+    X_train = train_data.drop(columns=['Appliances'])
+    y_train = train_data['Appliances']
 
-def train_evaluate_rf(X_train, y_train, X_val, y_val):
-    print("Training Random Forest Baseline")
-    
-    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    os.makedirs('models', exist_ok=True)
+
+    print("Training Linear Regression")
+    lr = LinearRegression()
+    lr.fit(X_train, y_train)
+    joblib.dump(lr, 'models/linear_regression.joblib')
+
+    print("Tuning & Training Random Forest")
+    rf_params = {'n_estimators': [100, 200], 'max_depth': [None, 10, 20], 'min_samples_leaf': [1, 4]}
+    rf = RandomizedSearchCV(RandomForestRegressor(random_state=42), rf_params, n_iter=5, cv=3, n_jobs=-1)
     rf.fit(X_train, y_train)
-    
-    print("Evaluating on Validation Set")
-    preds = rf.predict(X_val)
-    
-    mae = mean_absolute_error(y_val, preds)
-    rmse = np.sqrt(mean_squared_error(y_val, preds))
-    
-    print(f"\n--- Baseline Performance (Scaled Space) ---")
-    print(f"MAE:  {mae:.4f}")
-    print(f"RMSE: {rmse:.4f}")
-    
-    return rf
+    joblib.dump(rf.best_estimator_, 'models/random_forest.joblib')
 
-def plot_feature_importances(model, feature_names):
-    print("\nExtracting Feature Importances")
-    importances = model.feature_importances_
-    
-    # Create a DataFrame to sort the math
-    fi_df = pd.DataFrame({
-        'Feature': feature_names,
-        'Importance': importances
-    }).sort_values(by='Importance', ascending=True)
-    
-    # Generate the visual proof for your report
-    plt.figure(figsize=(10, 8))
-    plt.barh(fi_df['Feature'], fi_df['Importance'], color='teal')
-    plt.title("Random Forest Feature Importance (Algorithmic Selection)")
-    plt.xlabel("Relative Predictive Power")
-    plt.tight_layout()
-    plt.show()
-    
-    print("\nBottom 5 Features (Candidates for Deletion):")
-    print(fi_df.head(5).to_string(index=False))
+    print("Tuning & Training XGBoost")
+    xgb_params = {'n_estimators': [100, 200], 'max_depth': [3, 5, 7], 'learning_rate': [0.01, 0.1]}
+    xgb = RandomizedSearchCV(XGBRegressor(random_state=42), xgb_params, n_iter=5, cv=3, n_jobs=-1)
+    xgb.fit(X_train, y_train)
+    joblib.dump(xgb.best_estimator_, 'models/xgboost.joblib')
+
+    print("Baselines trained and serialized successfully.")
 
 if __name__ == "__main__":
-    X_train, y_train, X_val, y_val = load_splits()
-    rf_model = train_evaluate_rf(X_train, y_train, X_val, y_val)
-    plot_feature_importances(rf_model, X_train.columns)
+    train_baselines()
