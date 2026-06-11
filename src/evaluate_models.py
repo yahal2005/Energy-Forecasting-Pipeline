@@ -6,7 +6,7 @@ import os
 import sys
 import joblib
 
-from data_preprocessing import create_sequences
+
 
 # Suppress TF logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -15,6 +15,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # Ensure Python can find the src module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from data_preprocessing import create_sequences
 from src import config
 
 

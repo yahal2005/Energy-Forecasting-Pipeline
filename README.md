@@ -112,8 +112,16 @@ Trains the Linear Regression, Random Forest, and XGBoost baselines on the traini
 python src/train_baseline.py
 
 ```
+### Phase 4: Deep Learning Baseline Training
 
-### Phase 4: Deep Learning Optimization
+Trains the Deep Learning baseline model on the training data and serializes them as `.joblib` artifacts inside the `models/` directory.
+
+```bash
+python src/train_dl.py
+
+```
+
+### Phase 5: Deep Learning Optimization
 
 Utilizes KerasTuner to dynamically hunt for the optimal CNN-LSTM architecture, saving the ultimate champion as a `.keras` artifact.
 
@@ -122,7 +130,7 @@ python src/tune_model.py
 
 ```
 
-### Phase 5: The Final Showdown (Evaluation)
+### Phase 6: The Final Showdown (Evaluation)
 
 Loads all serialized artifacts and the heavily isolated test dataset to generate final metrics (MAE, RMSE) and saves 5 professional-grade visualizations to the `models/images/` directory.
 
