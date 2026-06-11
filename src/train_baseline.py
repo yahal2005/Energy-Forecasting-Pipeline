@@ -2,42 +2,41 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
+from sklearn.model_selection import RandomizedSearchCV
 import os
 import sys
 import joblib
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import config
-
-def load_train_data():
-    print("Loading training data...")
-    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"), index_col=0)
-    X_train = train.drop(columns=[config.TARGET]).values
-    y_train = train[config.TARGET].values
-    return X_train, y_train
 
 
-def train_and_save_baselines():
-    X_train, y_train = load_train_data()
-    model_dir = os.path.join(config.PROJECT_ROOT, "models")
-    os.makedirs(model_dir, exist_ok=True)
+def train_baselines():
+    print("Loading scaled data for baseline training")
+    train_data = pd.read_csv('data/processed/train_final.csv')
+    
+    X_train = train_data.drop(columns=['Appliances'])
+    y_train = train_data['Appliances']
 
-    print("\nTraining Linear Regression...")
+    os.makedirs('models', exist_ok=True)
+
+    print("Training Linear Regression")
     lr = LinearRegression()
     lr.fit(X_train, y_train)
-    joblib.dump(lr, os.path.join(model_dir, "linear_regression.joblib"))
+    joblib.dump(lr, 'models/linear_regression.joblib')
 
-    print("Training Random Forest...")
-    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    print("Tuning & Training Random Forest")
+    rf_params = {'n_estimators': [100, 200], 'max_depth': [None, 10, 20], 'min_samples_leaf': [1, 4]}
+    rf = RandomizedSearchCV(RandomForestRegressor(random_state=42), rf_params, n_iter=5, cv=3, n_jobs=-1)
     rf.fit(X_train, y_train)
-    joblib.dump(rf, os.path.join(model_dir, "random_forest.joblib"))
+    joblib.dump(rf.best_estimator_, 'models/random_forest.joblib')
 
-    print("Training XGBoost...")
-    xgb = XGBRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    print("Tuning & Training XGBoost")
+    xgb_params = {'n_estimators': [100, 200], 'max_depth': [3, 5, 7], 'learning_rate': [0.01, 0.1]}
+    xgb = RandomizedSearchCV(XGBRegressor(random_state=42), xgb_params, n_iter=5, cv=3, n_jobs=-1)
     xgb.fit(X_train, y_train)
-    joblib.dump(xgb, os.path.join(model_dir, "xgboost.joblib"))
+    joblib.dump(xgb.best_estimator_, 'models/xgboost.joblib')
 
-    print("All baseline models trained and serialized to /models/")
+    print("Baselines trained and serialized successfully.")
 
 if __name__ == "__main__":
-    train_and_save_baselines()
+    train_baselines()

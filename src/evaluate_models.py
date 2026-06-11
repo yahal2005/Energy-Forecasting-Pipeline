@@ -6,6 +6,8 @@ import os
 import sys
 import joblib
 
+from data_preprocessing import create_sequences
+
 # Suppress TF logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
@@ -15,43 +17,49 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
 
-def load_test_data():
-    print("Loading test data for evaluation")
-    test = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "test_final.csv"), index_col=0)
-    X_test = test.drop(columns=[config.TARGET]).values
-    y_test = test[config.TARGET].values
-    return X_test, y_test
 
 def run_evaluation():
-    X_test, y_test = load_test_data()
-    model_dir = os.path.join(config.PROJECT_ROOT, "models")
+    print("Loading test data and models")
+    test_data = pd.read_csv('data/processed/test_final.csv')
     
-    print("Loading Serialized Models")
-    lr = joblib.load(os.path.join(model_dir, "linear_regression.joblib"))
-    rf = joblib.load(os.path.join(model_dir, "random_forest.joblib"))
-    xgb = joblib.load(os.path.join(model_dir, "xgboost.joblib"))
+    # 2D Data for Baselines
+    X_test_2d = test_data.drop(columns=['Appliances'])
+    y_test_2d = test_data['Appliances']
     
-    X_test_dl = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
-    dl_model = tf.keras.models.load_model(os.path.join(model_dir, "cnn_lstm_tuned.keras"))
+    # 3D Data for Deep Learning
+    SEQ_LENGTH = 24
+    X_test_3d, y_test_3d = create_sequences(test_data, 'Appliances', seq_length=SEQ_LENGTH)
     
-    print("Executing Predictions")
-    results = {
-        "Linear Regression": {"preds": lr.predict(X_test)},
-        "Random Forest": {"preds": rf.predict(X_test)},
-        "XGBoost": {"preds": xgb.predict(X_test)},
-        "Tuned CNN-LSTM": {"preds": dl_model.predict(X_test_dl, verbose=0).flatten()}
+    # Load Models
+    lr = joblib.load('models/linear_regression.joblib')
+    rf = joblib.load('models/random_forest.joblib')
+    xgb = joblib.load('models/xgboost.joblib')
+    dl_model = tf.keras.models.load_model('models/cnn_lstm_tuned.keras')
+
+    # Generate Predictions
+    preds = {
+        'Linear Regression': lr.predict(X_test_2d)[SEQ_LENGTH:],
+        'Random Forest': rf.predict(X_test_2d)[SEQ_LENGTH:],
+        'XGBoost': xgb.predict(X_test_2d)[SEQ_LENGTH:],
+        'Tuned CNN-LSTM': dl_model.predict(X_test_3d).flatten()
     }
     
-    print("METRIC Comparison")
-    for name, data in results.items():
-        data["MAE"] = mean_absolute_error(y_test, data["preds"])
-        data["RMSE"] = np.sqrt(mean_squared_error(y_test, data["preds"]))
-        print(f"{name.ljust(18)} -> MAE: {data['MAE']:.4f} | RMSE: {data['RMSE']:.4f}")
+    # Align the true values to match the shortened sequence length
+    y_true_aligned = y_test_3d
+
+    results = {}
+    for name, y_pred in preds.items():
+        mae = mean_absolute_error(y_true_aligned, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_true_aligned, y_pred))
+        results[name] = {'MAE': mae, 'RMSE': rmse, 'preds': y_pred}
+        print(f"{name} - MAE: {mae:.4f} | RMSE: {rmse:.4f}")
         
-    generate_visualizations(results, y_test, model_dir)
+    model_dir = 'models/images'
+    os.makedirs(model_dir, exist_ok=True)
+    generate_visualizations(results, y_true_aligned, model_dir)
 
 def generate_visualizations(results, y_test, model_dir):
-    print("\nGenerating 5 World-Class Visualizations for Subtask 4.4...")
+    print("\nGenerating Visualizations")
     sns.set_theme(style="whitegrid")
     
     # PLOT 1: Performance Bar Chart

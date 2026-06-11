@@ -3,11 +3,12 @@ import numpy as np
 import os
 import sys
 
+from data_preprocessing import create_sequences
+
 # Suppress TensorFlow logging spam
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Conv1D
+from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Conv1D, MaxPooling1D
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -16,41 +17,44 @@ import keras_tuner as kt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
 
-def load_and_reshape():
-    print("Loading final datasets for tuning")
-    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"), index_col=0)
-    val = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "val_final.csv"), index_col=0)
-    test = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "test_final.csv"), index_col=0)
+def load_and_sequence():
+    print("Loading final datasets for Deep Learning Tuning...")
+    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"))
+    val = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "val_final.csv"))
+    test = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "test_final.csv"))
     
-    X_train, y_train = train.drop(columns=[config.TARGET]).values, train[config.TARGET].values
-    X_val, y_val = val.drop(columns=[config.TARGET]).values, val[config.TARGET].values
-    X_test, y_test = test.drop(columns=[config.TARGET]).values, test[config.TARGET].values
-    
-    X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
-    X_val = X_val.reshape((X_val.shape[0], 1, X_val.shape[1]))
-    X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
-    
-    return X_train, y_train, X_val, y_val, X_test, y_test
+    # Strips lingering strings just to be safe
+    train = train.select_dtypes(include=['number'])
+    val = val.select_dtypes(include=['number'])
+    test = test.select_dtypes(include=['number'])
 
-def get_model_builder(input_shape):
+    SEQ_LENGTH = 24
+    
+    # Uses the sequence generaton
+    X_train, y_train = create_sequences(train, config.TARGET, seq_length=SEQ_LENGTH)
+    X_val, y_val = create_sequences(val, config.TARGET, seq_length=SEQ_LENGTH)
+    X_test, y_test = create_sequences(test, config.TARGET, seq_length=SEQ_LENGTH)
+    
+    return X_train, y_train, X_val, y_val, X_test, y_test, SEQ_LENGTH
+
+
+def get_model_builder(seq_length, num_features):
     """
     Closure to pass the exact dynamic input shape into the KerasTuner builder.
     """
     def build_model(hp):
         model = Sequential()
-        
-        # Modern Keras 3 syntax: Use Input layer explicitly
-        model.add(Input(shape=input_shape))
-        
-        # Tune the number of CNN filters
+        model.add(Input(shape=(seq_length, num_features)))
+    
         hp_filters = hp.Int('conv_filters', min_value=32, max_value=128, step=32)
-        model.add(Conv1D(filters=hp_filters, kernel_size=1, activation='relu')) 
+        model.add(Conv1D(filters=hp_filters, kernel_size=3, activation='relu')) 
+        model.add(MaxPooling1D(pool_size=2)) # Compress the local noise before the LSTM
         
         # Tune the LSTM units
         hp_lstm_units = hp.Int('lstm_units', min_value=64, max_value=256, step=64)
         model.add(LSTM(hp_lstm_units, activation='relu', return_sequences=False))
         
-        # Subtask 5.2: Tune the Dropout rate
+        # Tune the Dropout rate
         hp_dropout = hp.Float('dropout_rate', min_value=0.1, max_value=0.4, step=0.1)
         model.add(Dropout(hp_dropout))
         
@@ -60,7 +64,7 @@ def get_model_builder(input_shape):
         
         model.add(Dense(1, activation='linear'))
         
-        # Tune the Learning Rate for the Adam optimizer
+        # Tune the Learning Rate
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])
         
         model.compile(optimizer=Adam(learning_rate=hp_learning_rate), loss='mse', metrics=['mae'])
@@ -68,13 +72,14 @@ def get_model_builder(input_shape):
     return build_model
 
 def optimize_and_evaluate():
-    X_train, y_train, X_val, y_val, X_test, y_test = load_and_reshape()
+    X_train, y_train, X_val, y_val, X_test, y_test, seq_length = load_and_sequence()
+    num_features = X_train.shape[2]
     
-    print("\nInitializing KerasTuner Random Search...")
+    print(f"\nInitialized Sequences. Input Shape: {X_train.shape}")
+    print("Initializing KerasTuner Random Search...")
 
-    model_builder = get_model_builder((1, X_train.shape[2]))
+    model_builder = get_model_builder(seq_length, num_features)
 
-    # Using RandomSearch to test 10 random combinations of the architecture.
     tuner = kt.RandomSearch(
         model_builder,
         objective='val_loss',
@@ -85,10 +90,9 @@ def optimize_and_evaluate():
         overwrite=True
     )
     
-    # Early stopping
     early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     
-    print("Commencing Hyperparameter Search")
+    print("Commencing Hyperparameter Search...")
     tuner.search(
         X_train, y_train,
         epochs=30, 
@@ -97,8 +101,7 @@ def optimize_and_evaluate():
         verbose=1
     )
     
-    # Model Evaluation Post-Optimization
-    print("Search Complete. Extracting the mathematically perfect architecture")
+    print("Search Complete. Extracting the mathematically perfect architecture...")
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
     
     print(f"""
@@ -112,7 +115,7 @@ def optimize_and_evaluate():
     
     best_model = tuner.hypermodel.build(best_hps)
     
-    print("Training the Champion model fully")
+    print("Training the Champion model fully...")
     best_model.fit(
         X_train, y_train,
         epochs=100,
@@ -125,11 +128,11 @@ def optimize_and_evaluate():
     mae = mean_absolute_error(y_test, preds)
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     
-    print(f"Post-Optimization Performance")
-    print(f"Pre-Tuning MAE:  0.0249  | Tuned MAE:  {mae:.4f}")
-    print(f"Pre-Tuning RMSE: 0.0590  | Tuned RMSE: {rmse:.4f}")
+    print(f"\nPost-Optimization Performance on Test Set:")
+    print(f"Tuned MAE:  {mae:.4f}")
+    print(f"Tuned RMSE: {rmse:.4f}")
     
-    # Save the best model 
+    os.makedirs(os.path.join(config.PROJECT_ROOT, "models"), exist_ok=True)
     best_model.save(os.path.join(config.PROJECT_ROOT, "models", "cnn_lstm_tuned.keras"))
     print("Champion model saved as 'cnn_lstm_tuned.keras'")
 
