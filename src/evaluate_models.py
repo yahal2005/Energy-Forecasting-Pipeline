@@ -16,10 +16,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 # Ensure Python can find the src module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from data_preprocessing import create_sequences
-from src import config
 
 
 def run_evaluation():
+    """Loads the test set and all trained models, generates predictions and calculates performance metrics, then creates visualizations."""
+
     print("Loading test data and models")
     test_data = pd.read_csv('data/processed/test_final.csv')
     
@@ -60,6 +61,12 @@ def run_evaluation():
     generate_visualizations(results, y_true_aligned, model_dir)
 
 def generate_visualizations(results, y_test, model_dir):
+    """Generates and saves a suite of visualizations comparing model performance.
+        Args:
+            results (dict): Dictionary containing model names, their predictions, and performance metrics.
+            y_test (np.array): The true target values for the test set.
+            model_dir (str): Directory path to save the generated images.
+    """
     print("\nGenerating Visualizations")
     sns.set_theme(style="whitegrid")
     

@@ -2,7 +2,12 @@ import pandas as pd
 import numpy as np
 
 def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Extracts cyclical time features from the datetime index."""
+    """Extracts cyclical time features from the datetime index.
+       Args:
+           df (pd.DataFrame): The input DataFrame with a datetime index.
+       Returns:
+           pd.DataFrame: The DataFrame with added time features.
+    """
     df = df.copy()
     
     df['hour'] = df.index.hour
@@ -22,7 +27,12 @@ def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def create_rolling_and_lagged_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Short/Long term memory and autoregressive lags."""
+    """Short/Long term memory and autoregressive lags.
+       Args:
+           df (pd.DataFrame): The input DataFrame with time features.
+       Returns:
+           pd.DataFrame: The DataFrame with added rolling and lagged features.
+    """
     df = df.copy()
     
     # Rolling Windows (1-hour, 3-hour, and our custom 48-hour thermal inertia)
@@ -42,7 +52,12 @@ def create_rolling_and_lagged_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def create_domain_and_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Interactions and Thermodynamic Physics."""
+    """Interactions and Thermodynamic Physics.
+       Args:
+           df (pd.DataFrame): The input DataFrame with rolling and lagged features.
+       Returns:
+           pd.DataFrame: The DataFrame with added domain-specific interaction features.
+    """
     df = df.copy()
     
     # Rubric Interactions (Basic Heat Index Proxies)
@@ -63,7 +78,12 @@ def create_domain_and_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Master function to run the full engineering pipeline."""
+    """Master function to run the full engineering pipeline.
+       Args:
+           df (pd.DataFrame): The input DataFrame.
+       Returns:
+           pd.DataFrame: The DataFrame with all engineered features.
+    """
     print("Engineering time-based features...")
     df = create_time_features(df)
     

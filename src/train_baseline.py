@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 def train_baselines():
+    """Trains baseline models and serializes them to disk."""
     print("Loading scaled data for baseline training")
     train_data = pd.read_csv('data/processed/train_final.csv')
     

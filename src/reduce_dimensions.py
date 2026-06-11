@@ -1,11 +1,15 @@
-import pandas as pd
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import config
 
 def prune_features(df):
+    """Drops low-importance features identified from our Random Forest analysis to optimize for Deep Learning.
+        Args:
+            df (pd.DataFrame): The input DataFrame with all engineered features.
+        Returns:
+            pd.DataFrame: The DataFrame with low-importance features removed.
+    """
     # Features identified as dead weight from our Random Forest
     cols_to_drop = [
         'Date',

@@ -20,6 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
 
 def train_dl():
+    """Trains a deep learning model for energy forecasting."""
     print("Loading final datasets for Deep Learning")
     train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"))
     val = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "val_final.csv"))

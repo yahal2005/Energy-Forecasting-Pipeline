@@ -10,7 +10,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
 
 def split_time_series(df, train_ratio=0.7, val_ratio=0.2):
-    """Strict chronological split (70/20/10) to prevent data leakage."""
+    """Strict chronological split (70/20/10) to prevent data leakage.
+     Args:
+        df (pd.DataFrame): The full dataset to split.
+        train_ratio (float): Proportion of data for training.
+        val_ratio (float): Proportion of data for validation.
+     Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Train, Val, Test splits.
+    """
     train_idx = int(len(df) * train_ratio)
     val_idx = int(len(df) * (train_ratio + val_ratio))
     

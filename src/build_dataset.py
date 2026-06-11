@@ -12,6 +12,8 @@ from src.reduce_dimensions import prune_features
 from src.data_preprocessing import split_time_series, scale_data, save_processed_data
 
 def execute_data_pipeline():
+    """Executes the entire data processing pipeline."""
+
     print("Loading Raw Data")
     df = load_raw_data()
     

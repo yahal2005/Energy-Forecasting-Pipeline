@@ -4,6 +4,10 @@ from src import config
 def load_raw_data(filepath: str = config.RAW_DATA_PATH) -> pd.DataFrame:
     """
     Loads the raw energy dataset and enforces the chronological index.
+    Args:        
+        filepath (str): Path to the raw CSV data file.
+    Returns:     
+        pd.DataFrame: Loaded and indexed DataFrame.
     """
     print(f"Loading data from {filepath}...")
     

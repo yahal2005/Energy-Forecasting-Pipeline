@@ -3,8 +3,6 @@ import numpy as np
 import os
 import sys
 
-from data_preprocessing import create_sequences
-
 # Suppress TensorFlow logging spam
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 from tensorflow.keras.models import Sequential
@@ -16,8 +14,10 @@ import keras_tuner as kt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
+from src.data_preprocessing import create_sequences
 
 def load_and_sequence():
+    """Loads the final processed datasets, applies the sequence generation for the LSTM, and returns the 3D arrays ready for tuning and evaluation."""
     print("Loading final datasets for Deep Learning Tuning...")
     train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"))
     val = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "val_final.csv"))
@@ -41,8 +41,19 @@ def load_and_sequence():
 def get_model_builder(seq_length, num_features):
     """
     Closure to pass the exact dynamic input shape into the KerasTuner builder.
+    Args:
+        seq_length (int): The length of the input sequences (e.g., 24).
+        num_features (int): The number of features in the input data.
+    Returns:
+        function: A model-building function that KerasTuner can use.
     """
     def build_model(hp):
+        """Definnes the CNN-LSTM architecture with hyperparameter to tune.
+           Args:
+               hp (HyperParameters): The KerasTuner object for defining hyperparameters.
+            Returns:
+               tf.keras.Model: The compiled Keras model.
+        """
         model = Sequential()
         model.add(Input(shape=(seq_length, num_features)))
     
@@ -72,6 +83,7 @@ def get_model_builder(seq_length, num_features):
     return build_model
 
 def optimize_and_evaluate():
+    """Runs the KerasTuner optimization process and evaluates the best model on the test set."""
     X_train, y_train, X_val, y_val, X_test, y_test, seq_length = load_and_sequence()
     num_features = X_train.shape[2]
     

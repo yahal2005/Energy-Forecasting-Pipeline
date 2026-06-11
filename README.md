@@ -88,7 +88,7 @@ To reproduce the findings, execute the pipeline scripts in the following order. 
 
 ### Phase 1: Data Orchestration & Engineering (Mandatory)
 
-*Because datasets are excluded from version control, this script must be run first.* It calls the modular helper files (`data_loader.py`, `feature_engineering.py`, etc.) to dynamically reconstruct the local `data/` directory, generate temporal features, scale the data, and enforce a strict 70/20/10 temporal split.
+*Because datasets are excluded from version control, this script must be run first. Ensure to load the dataset to 'data/raw'* It calls the modular helper files (`data_loader.py`, `feature_engineering.py`, etc.) to dynamically reconstruct the local `data/` directory, generates temporal features, scale the data, and enforce a strict 70/20/10 temporal split.
 
 ```bash
 python src/build_dataset.py

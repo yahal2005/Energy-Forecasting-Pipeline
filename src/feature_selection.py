@@ -8,13 +8,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
 
 def run_feature_selection():
+    """Trains a diagnostic Random Forest to identify low-importance features, generates a feature importance chart, and prints the bottom 5 features."""
     print("Loading pre-selection data")
-    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train.csv"), index_col=0)
+    train = pd.read_csv(os.path.join(config.PROCESSED_DATA_PATH, "train_final.csv"), index_col=0)
     
     X_train = train.drop(columns=[config.TARGET])
     y_train = train[config.TARGET]
     
-    print("Training Diagnostic Random Forest...")
+    print("Training Diagnostic Random Forest")
     rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
     
